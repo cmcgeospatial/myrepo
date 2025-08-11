@@ -1,6 +1,7 @@
 # load libraries
 library(data.table)
 library(ggplot2)
+library(dplyr)
 library(ggrepel)
 library(tidyverse)
 library(ggmap)
@@ -434,6 +435,20 @@ ggplot(pm25_map) +
   theme_minimal()
 
 write.dbf(summary_all_xy, "2025q1_aqi_summary.dbf")
+
+df_wide <- summary_all_xy %>%
+  pivot_wider(
+    id_cols = c(Name, latitude, longitude),
+    names_from = Pollutant,
+    values_from = c(mean, median, min, max, StD),
+    names_glue = "{Pollutant}_{.value}"
+  )
+
+df_wide_clean <- df_wide %>%
+  mutate(across(where(is.factor), as.character)) %>%  # factors to character
+  as.data.frame()
+
+write.dbf(df_wide_clean, "2025q1_aqi_summary_wide.dbf")
 
 ###
 
