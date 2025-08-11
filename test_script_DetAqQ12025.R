@@ -56,7 +56,20 @@ aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
   ][, Pollutant := col] # adds column for each pollutant by name
 }), use.names = T)
 
+#aqi_levels <- data.frame(
+#    ymin = c(0, 51, 101, 151, 201, 301),
+ #   ymax = c(50, 100, 150, 200, 300, 500),
+  #  category = c("Good", "Moderate", "Unhealthy for Sensitive", "Unhealthy", "Very Unhealthy", "Hazardous"),
+   # fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023")
+#  )
   
+aqi_levels <- data.frame(
+  ymin = c(0, 51, 101),
+  ymax = c(50, 100, 150),
+  category = c("Good", "Moderate", "Unhealthy for Sensitive"),
+  fill = c("#00e400", "#ffff00", "#ff7e00")
+)
+
   # Create a list to store the plots
   plots <- list()
   
@@ -64,8 +77,28 @@ aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
     df_poll <- summary_all %>%
       filter(Pollutant == poll)
     
+    # Set x range to cover all bars
+    xmin <- 0.5
+    xmax <- nrow(df_poll) + 0.5
+    
     p <- ggplot(df_poll, aes(x = Name, y = mean, fill = Name)) +
+      # Background AQI categories
+      geom_rect(
+        data = aqi_levels,
+        aes(
+          xmin = xmin, xmax = xmax,
+          ymin = ymin, ymax = ymax,
+          fill = category
+        ),
+        inherit.aes = FALSE,
+        alpha = 0.2
+      ) +
       geom_col() +
+      scale_fill_manual(
+        values = c(setNames(aqi_levels$fill, aqi_levels$category),
+                   setNames(rep("grey60", length(unique(df_poll$Name))), unique(df_poll$Name))),
+        guide = "none"
+      ) +
       labs(
         title = paste("Mean AQI by Monitor for", poll, "Q1 2025"),
         y = "Mean AQI",
@@ -87,7 +120,68 @@ aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
   print(plots[["NO2.AQI"]])
   print(plots[["O3.AQI"]])
   
+  
+  xmin <- 0.5
+  xmax <- nrow(df_poll) + 0.5
+  
+  p <- ggplot(df_poll, aes(x = Name, y = mean)) +
+    # Background AQI bands
+    geom_rect(
+      data = aqi_levels,
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = category),
+      inherit.aes = FALSE,
+      alpha = 0.2
+    ) +
+    geom_col(aes(fill = Name)) +
+    # Points for max
+    geom_point(aes(y = max), color = "blue", size = 3) +
+    geom_text(aes(y = max, label = round(max, 1)),
+              vjust = -0.5, size = 2, color = "blue") +
+    # Points for min
+    geom_point(aes(y = min), color = "red", size = 3) +
+    geom_text(aes(y = min, label = round(min, 1)),
+              vjust = 1.5, size = 2, color = "red") +
+    scale_fill_manual(values = setNames(monitor_colors, unique(df_poll$Name))) +
+    labs(
+      title = paste("Mean AQI by Monitor for", poll, "Q1 2025"),
+      y = "AQI",
+      x = "Monitor"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "none"
+    )
+  
+  plots[[poll]] <- p
+  }
 
+# Show all in a grid
+do.call(grid.arrange, c(plots, ncol = 2))
+
+# Show all in a grid
+do.call(grid.arrange, c(plots, ncol = 2))
+
+  # create time series plot
+  p <- ggplot(df_mod, aes(date, PM2.5.AQI)) + geom_line() +
+    geom_rect(data = aqi_levels, aes(xmin = min(date), xmax = max(date),
+                                     ymin = ymin, ymax = ymax, fill = category),
+              inherit.aes = FALSE, alpha = 0.2) +
+    scale_fill_manual(values = setNames(aqi_levels$fill, aqi_levels$category)) +
+    
+    # Line plot
+    geom_line(color="turquoise4") +
+    theme_minimal() + 
+    labs(x="", y="PM 2.5 AQI", title="AQI for PM 2.5 (Q1 2025)") +
+    theme(plot.title = element_text(hjust=0.5, size=20, face="bold"))
+  
+  # display time series plot
+  p + theme(legend.position='none') + 
+    theme(axis.text.x=element_text(angle=50, hjust=1)) 
+  
+  p
+  
+  
 
 ggplot(summary_all, aes(x = Name, y = mean, fill = Name)) +
   geom_col() +
@@ -181,7 +275,7 @@ pm25_stats <- pm25_df %>%
     .groups = "drop"
   )
 
-# 3️⃣ Plot boxplot + stats text
+# Plot boxplot + stats text
 ggplot(pm25_df, aes(x = Name, y ='PM2.5.AQI')) +
   geom_boxplot() +
   geom_text(
