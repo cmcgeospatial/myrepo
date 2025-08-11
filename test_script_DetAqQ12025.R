@@ -5,6 +5,7 @@ library(ggrepel)
 library(tidyverse)
 library(ggmap)
 library(doBy)
+library(cowplot)
 library(foreign)
 
 # set the working directory. 
@@ -15,12 +16,10 @@ df <- q1aq25
 
 # view column names of df
 names(df)
-View(df)
-
+#View(df)
 
 df_mod <- df[, c(1, 4, 8, 12, 17, 21, 25)]
-names(df_mod)
-
+#names(df_mod)
 
 sensor <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/DetMonitorPointsXY.csv")
 
@@ -58,12 +57,37 @@ aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
 }), use.names = T)
 
   
-ggplot(summary_all, aes(x = Name, y = mean, fill = Pollutant)) +
-  geom_col(position = "dodge") +
-  labs(title = "Mean AQI by Monitor and Pollutant for Q1 2025",
-       y = "Mean AQI") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  # Create a list to store the plots
+  plots <- list()
+  
+  for (poll in aqi_cols) {
+    df_poll <- summary_all %>%
+      filter(Pollutant == poll)
+    
+    p <- ggplot(df_poll, aes(x = Name, y = mean, fill = Name)) +
+      geom_col() +
+      labs(
+        title = paste("Mean AQI by Monitor for", poll, "Q1 2025"),
+        y = "Mean AQI",
+        x = "Monitor"
+      ) +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none"
+      )
+    
+    plots[[poll]] <- p
+  }
+  
+  # Example: print PM2.5 plot
+  print(plots[["PM2.5.AQI"]])
+  print(plots[["PM10.AQI"]])
+  print(plots[["SO2.AQI"]])
+  print(plots[["NO2.AQI"]])
+  print(plots[["O3.AQI"]])
+  
+
 
 ggplot(summary_all, aes(x = Name, y = mean, fill = Name)) +
   geom_col() +
@@ -118,6 +142,74 @@ ggplot(pm25_map) +
   theme_minimal()
 
 write.dbf(summary_all_xy, "2025q1_aqi_summary.dbf")
+
+###
+
+ggplot(summary_all_xy, aes(x = Name, y = value)) +
+  geom_boxplot() +
+  facet_wrap(~Pollutant, scales = "free_y", ncol = 1) +  # one graph per pollutant
+  labs(
+    title = "Distribution of AQI Readings per Monitor",
+    x = "Monitor",
+    y = "AQI"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # rotate monitor names
+    legend.position = "none"  # remove huge legend
+  )
+
+# create box and whisker summary plot per monitor
+ggplot(summary_all_xy %>% filter(Pollutant == "PM2.5.AQI"), aes(x = Name, y = mean, fill = Name)) +
+  geom_boxplot() +
+  labs(title = "PM2.5 AQI Distribution by Monitor") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+# Filter for PM2.5 only
+pm25_df <- summary_all_xy %>% filter(Pollutant == "PM2.5.AQI")
+
+# Summarise stats per monitor
+pm25_stats <- pm25_df %>%
+  group_by(Name) %>%
+  summarise(
+    mean_val = mean(mean, na.rm = TRUE),
+    min_val  = min(min, na.rm = TRUE),
+    max_val  = max(max, na.rm = TRUE),
+    sd_val   = sd(StD, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# 3️⃣ Plot boxplot + stats text
+ggplot(pm25_df, aes(x = Name, y ='PM2.5.AQI')) +
+  geom_boxplot() +
+  geom_text(
+    data = pm25_stats,
+    aes(
+      x = Name,
+      y = max_val + 5,  # place above max whisker
+      label = paste0(
+        "Mean=", round(mean_val, 1),
+        "\nMin=", round(min_val, 1),
+        "\nMax=", round(max_val, 1),
+        "\nSD=", round(sd_val, 1)
+      )
+    ),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  labs(
+    title = "PM2.5 AQI Distribution per Monitor",
+    x = "Monitor",
+    y = "PM2.5 AQI"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
 
 plot.airquality <- function(monitor_name, df_xy) {
   # Ensure 'date' is Date class
