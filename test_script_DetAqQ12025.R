@@ -1,3 +1,12 @@
+# load libraries
+library(data.table)
+library(ggplot2)
+library(ggrepel)
+library(tidyverse)
+library(ggmap)
+library(doBy)
+library(foreign)
+
 # set the working directory. 
 #setwd("C:/Users/christine.calleja/Documents/CDHI_Analysis/Data/AQI_test/Data")
 q1aq25 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/AQI_Data/Q1.2025.AQIs.Detroit.csv")
@@ -12,10 +21,6 @@ View(df)
 df_mod <- df[, c(1, 4, 8, 12, 17, 21, 25)]
 names(df_mod)
 
-#library(dplyr)
-#library(ggplot2)
-#library(ggrepel)
-#library(tidyverse)
 
 sensor <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/DetMonitorPointsXY.csv")
 
@@ -31,7 +36,88 @@ df_xy <- df_xy %>%
 
 # convert to Date to date variable fo x-axis
 date = as.Date(df_xy$date)
-PM2.5AQI = df$PM2.5.AQI
+
+# convert df_xy to data.table
+setDT(df_xy)
+
+# list AQI column names to be summarized
+aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
+
+# loop through the columns, calculate summary stats per pollutant and combine into one table
+  summary_all <- rbindlist(lapply(aqi_cols, function(col) {
+    df_xy[
+      ,.(
+        mean=as.numeric(mean(get(col), na.rm = T)), 
+        max=as.numeric(max(get(col), na.rm = T)), 
+        min=as.numeric(min(get(col), na.rm = T)), 
+        median=as.numeric(median(get(col), na.rm = T)), 
+        StD=as.numeric(sd(get(col), na.rm = T))
+      ), 
+    by=Name
+  ][, Pollutant := col] # adds column for each pollutant by name
+}), use.names = T)
+
+  
+ggplot(summary_all, aes(x = Name, y = mean, fill = Pollutant)) +
+  geom_col(position = "dodge") +
+  labs(title = "Mean AQI by Monitor and Pollutant for Q1 2025",
+       y = "Mean AQI") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(summary_all, aes(x = Name, y = mean, fill = Name)) +
+  geom_col() +
+  facet_wrap(~Pollutant, scales = "free_y") +
+  labs(title = "Mean AQI by Monitor (per Pollutant) for Q1 2025",
+       y = "Mean AQI") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1) +
+  theme(legend.position = "none"))
+  
+summary_all_xy <- merge(summary_all, sensor_mod, by = "Name")
+
+# establish AQI colors
+aqi_levels <- data.frame(
+  ymin = c(0, 51, 101, 151, 201, 301),
+  ymax = c(50, 100, 150, 200, 300, 500),
+  category = c("Good", "Moderate", "Unhealthy for Sensitive", "Unhealthy", "Very Unhealthy", "Hazardous"),
+  fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023"),
+  stringAsFactors = F
+)
+
+# Filter by singular pollutant
+pm25_map <- summary_all_xy %>%
+  filter(Pollutant == "PM2.5.AQI") %>%
+  mutate(
+    AQI_Category = cut(
+      mean,
+      breaks = c(aqi_levels$ymin[1], aqi_levels$ymax),
+      labels = aqi_levels$category,
+      include.lowest = T,
+      right = T
+    )
+  )
+
+# plot it on a map of the us  
+ggplot(pm25_map) +
+  borders("states", colour = "gray80", fill = "gray95") +  # US states background
+  geom_point(
+    aes(x = longitude, y = latitude, color = AQI_Category),
+    size = 3
+  ) +
+  scale_color_manual(
+    values = setNames(aqi_levels$fill, aqi_levels$category),
+    drop = FALSE
+  ) +
+  coord_fixed(1.3) +
+  labs(
+    title = "Mean PM2.5 AQI by Monitor Location",
+    x = "Longitude", y = "Latitude",
+    color = "AQI Category"
+  ) +
+  theme_minimal()
+
+write.dbf(summary_all_xy, "2025q1_aqi_summary.dbf")
 
 plot.airquality <- function(monitor_name, df_xy) {
   # Ensure 'date' is Date class
