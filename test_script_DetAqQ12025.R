@@ -444,9 +444,7 @@ df_wide <- summary_all_xy %>%
     names_glue = "{Pollutant}_{.value}"
   )
 
-df_wide_clean <- df_wide %>%
-  mutate(across(where(is.factor), as.character)) %>%  # factors to character
-  as.data.frame()
+df_wide_clean <- as.data.frame(df_wide)
 
 write.dbf(df_wide_clean, "2025q1_aqi_summary_wide.dbf")
 
