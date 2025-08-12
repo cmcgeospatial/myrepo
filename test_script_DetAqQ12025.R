@@ -160,17 +160,10 @@ print(plots[["SO2.AQI"]])
 print(plots[["NO2.AQI"]])
 print(plots[["O3.AQI"]])
 
-p
 
 library(gridExtra)
 
-# your AQI bands
-aqi_levels <- data.frame(
-  ymin = c(0, 51, 101),
-  ymax = c(50, 100, 150),
-  category = c("Good", "Moderate", "Unhealthy for Sensitive"),
-  fill = c("#00e400", "#ffff00", "#ff7e00")
-)
+
 
 aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
 
@@ -271,8 +264,6 @@ if (length(plots) > 0) {
 cat("Saved files:\n")
 print(saved_files)
 
-# convert to Date to date variable fo x-axis
-date = as.Date(df_xy$date)
 
 # convert df_xy to data.table
 setDT(df_xy)
@@ -300,14 +291,6 @@ aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
   #  category = c("Good", "Moderate", "Unhealthy for Sensitive", "Unhealthy", "Very Unhealthy", "Hazardous"),
    # fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023")
 #  )
-  
-aqi_levels <- data.frame(
-  ymin = c(0, 51, 101),
-  ymax = c(50, 100, 150),
-  category = c("Good", "Moderate", "Unhealthy for Sensitive"),
-  fill = c("#00e400", "#ffff00", "#ff7e00")
-)
-
 
   # Create a list to store the plots
   plots <- list()
@@ -361,26 +344,27 @@ aqi_levels <- data.frame(
 
 df_xy
 df_xy$date <- as.Date(df_xy$date)
-  # create time series plot
-  p <- ggplot(df_mod, aes(date, SO2.AQI)) + geom_line() +
-    geom_rect(data = aqi_levels, aes(xmin = min(date), xmax = max(date),
-                                     ymin = ymin, ymax = ymax, fill = category),
-              inherit.aes = FALSE, alpha = 0.2) +
-    scale_fill_manual(values = setNames(aqi_levels$fill, aqi_levels$category)) +
+###
+#  # create time series plot
+#  p <- ggplot(df_mod, aes(date, SO2.AQI)) + geom_line() +
+#    geom_rect(data = aqi_levels, aes(xmin = min(date), xmax = max(date),
+#                                     ymin = ymin, ymax = ymax, fill = category),
+#              inherit.aes = FALSE, alpha = 0.2) +
+#    scale_fill_manual(values = setNames(aqi_levels$fill, aqi_levels$category)) +
     
-    # Line plot
-    geom_line(color="turquoise4") +
-    theme_minimal() + 
-    labs(x="", y="SO2 AQI", title="AQI for SO2 (Q1 2025)") +
-    theme(plot.title = element_text(hjust=0.5, size=20, face="bold"))
+#    # Line plot
+#    geom_line(color="turquoise4") +
+#    theme_minimal() + 
+#    labs(x="", y="SO2 AQI", title="AQI for SO2 (Q1 2025)") +
+#    theme(plot.title = element_text(hjust=0.5, size=20, face="bold"))
   
   # display time series plot
-  p + theme(legend.position='none') + 
-    theme(axis.text.x=element_text(angle=50, hjust=1)) 
+#  p + theme(legend.position='none') + 
+#    theme(axis.text.x=element_text(angle=50, hjust=1)) 
+#  
+#  p
   
-  p
-  
-  
+ ### 
 
 ggplot(summary_all, aes(x = Name, y = mean, fill = Name)) +
   geom_col() +
@@ -392,15 +376,6 @@ ggplot(summary_all, aes(x = Name, y = mean, fill = Name)) +
   theme(legend.position = "none"))
   
 summary_all_xy <- merge(summary_all, sensor_mod, by = "Name")
-
-# establish AQI colors
-aqi_levels <- data.frame(
-  ymin = c(0, 51, 101, 151, 201, 301),
-  ymax = c(50, 100, 150, 200, 300, 500),
-  category = c("Good", "Moderate", "Unhealthy for Sensitive", "Unhealthy", "Very Unhealthy", "Hazardous"),
-  fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023"),
-  stringAsFactors = F
-)
 
 # Filter by singular pollutant
 pm25_map <- summary_all_xy %>%
@@ -434,7 +409,7 @@ ggplot(pm25_map) +
   ) +
   theme_minimal()
 
-write.dbf(summary_all_xy, "2025q1_aqi_summary.dbf")
+#write.dbf(summary_all_xy, "2025q1_aqi_summary.dbf")
 
 df_wide <- summary_all_xy %>%
   pivot_wider(
@@ -446,36 +421,14 @@ df_wide <- summary_all_xy %>%
 
 df_wide_clean <- as.data.frame(df_wide)
 
-write.dbf(df_wide_clean, "2025q1_aqi_summary_wide.dbf")
+#write.dbf(df_wide_clean, "2025q1_aqi_summary_wide.dbf")
 
 ###
-
-ggplot(summary_all_xy, aes(x = Name, y = value)) +
-  geom_boxplot() +
-  facet_wrap(~Pollutant, scales = "free_y", ncol = 1) +  # one graph per pollutant
-  labs(
-    title = "Distribution of AQI Readings per Monitor",
-    x = "Monitor",
-    y = "AQI"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  # rotate monitor names
-    legend.position = "none"  # remove huge legend
-  )
-
-# create box and whisker summary plot per monitor
-ggplot(summary_all_xy %>% filter(Pollutant == "PM2.5.AQI"), aes(x = Name, y = mean, fill = Name)) +
-  geom_boxplot() +
-  labs(title = "PM2.5 AQI Distribution by Monitor") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "none")
 
 # Filter for PM2.5 only
 pm25_df <- summary_all_xy %>% filter(Pollutant == "PM2.5.AQI")
 
-# Summarise stats per monitor
+# Summarize stats per monitor
 pm25_stats <- pm25_df %>%
   group_by(Name) %>%
   summarise(
@@ -486,36 +439,7 @@ pm25_stats <- pm25_df %>%
     .groups = "drop"
   )
 
-# Plot boxplot + stats text
-ggplot(pm25_df, aes(x = Name, y ='PM2.5.AQI')) +
-  geom_boxplot() +
-  geom_text(
-    data = pm25_stats,
-    aes(
-      x = Name,
-      y = max_val + 5,  # place above max whisker
-      label = paste0(
-        "Mean=", round(mean_val, 1),
-        "\nMin=", round(min_val, 1),
-        "\nMax=", round(max_val, 1),
-        "\nSD=", round(sd_val, 1)
-      )
-    ),
-    inherit.aes = FALSE,
-    size = 3
-  ) +
-  labs(
-    title = "PM2.5 AQI Distribution per Monitor",
-    x = "Monitor",
-    y = "PM2.5 AQI"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  )
-
-
+# Plot time series per monitor per pollutant
 plot.airquality <- function(monitor_name, df_xy) {
   # Ensure 'date' is Date class
   df_xy$date <- as.Date(df_xy$date)
