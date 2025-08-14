@@ -31,6 +31,7 @@ colnames(df_mod)[2] <- "date"
 
 df_xy <- merge(df_mod, sensor_mod, by = "Name")
 
+
 # Group by monitor
 df_xy <- df_xy %>%
   group_by(Name)
@@ -410,6 +411,8 @@ ggplot(pm25_map) +
   theme_minimal()
 
 #write.dbf(summary_all_xy, "2025q1_aqi_summary.dbf")
+#write.dbf(df_xy, "2025q1_aqi_temporal.dbf")
+
 
 df_wide <- summary_all_xy %>%
   pivot_wider(

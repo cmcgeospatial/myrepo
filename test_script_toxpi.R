@@ -153,3 +153,14 @@ plot(res2_q1[order(txpRanks(res2_q1))], package = "gg", ncol = 10) +
 plot(res2_q1, txpRanks(res2_q1))
 plot(res2_q1, txpRanks(res2_q1), pch = 16, size = unit(0.75, "char"))
 
+input <- q1_txp_mod
+model <- txp_q1_model
+
+txpExportGui(
+  fileName = "C:/Users/christine.calleja/RCode/myrepo/txpQ1Model.csv",
+  input,
+  model,
+  id.var = "Name",
+  fills = NULL
+  )
+
