@@ -79,9 +79,30 @@ TxpModel(txpSlices = sl, txpWeights = c(2, 1, 3, 2), txpTransFuncs = tf2)
 ##End of example
 ##Beginning of analysis of Q1 2025 Det air sensor data
 
-q1_txp <- read.csv("C:/Users/christine.calleja/RCode/myrepo/c2025q1_aqi_summary_wide_ExportFeatures_table.csv")
+#q1_txp <- read.csv("C:/Users/christine.calleja/RCode/myrepo/c2025q1_aqi_summary_wide_ExportFeatures_table.csv")
+q24_txp <- df24_wide_clean
+q24_txp_mod <- q24_txp[, c(1,2,3,4,5,6,7,8,9,10,11)]
 q1_txp_mod <- q1_txp[, c(1, 2, 3, 4, 5, 6, 7, 8)]
+
+colnames(q24_txp_mod)
 colnames(q1_txp_mod)
+
+# creates toxpi model
+tfq24 <- TxpTransFuncList(linear = function(x) x)
+slq24 <- TxpSliceList(pm1 = TxpSlice("PM1_mean"),
+                      pm2.5 = TxpSlice("PM2.5_mean"),
+                      pm10 = TxpSlice("PM10_mean"),
+                      o3 = TxpSlice("O3_mean"),
+                      no2 = TxpSlice("NO2_mean"),
+                      no = TxpSlice("NO_mean"),
+                      co = TxpSlice("CO_mean"),
+                      so2 = TxpSlice("SO2_mean", tfq24))
+tf2q24 <- TxpTransFuncList(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+txp_q24_model <- TxpModel(
+  txpSlices = slq24, 
+  txpWeights = c(1, 1, 1, 1, 1, 1, 1, 1), 
+  txpTransFuncs = tf2q24
+)
 
 # creates toxpi model
 tfq1 <- TxpTransFuncList(linear = function(x) x)
@@ -96,7 +117,29 @@ txp_q1_model <- TxpModel(
   txpWeights = c(1, 1, 1, 1, 1), 
   txpTransFuncs = tf2q1
 )
+# creates toxpi model
+tfq1 <- TxpTransFuncList(linear = function(x) x)
+slq1 <- TxpSliceList(pm2.5 = TxpSlice("PM25aqi"),
+                   pm10 = TxpSlice("PM10aqi"),
+                   o3 = TxpSlice("O3aqi"),
+                   no2 = TxpSlice("NO2aqi"),
+                   so2 = TxpSlice("SO2aqi", tf1))
+tf2q1 <- TxpTransFuncList(NULL, linear = function(x) x, NULL, NULL, NULL)
+txp_q1_model <- TxpModel(
+  txpSlices = slq1, 
+  txpWeights = c(1, 1, 1, 1, 1), 
+  txpTransFuncs = tf2q1
+)
 
+## Calculate scores for single model; returns TxpResult object
+res_q24 <- txpCalculateScores(model = txp_q24_model,
+                             input = q24_txp_mod, #modified data
+                             id.var = "Name")
+
+## Calculate scores for single model; returns TxpResult object
+res_q1 <- txpCalculateScores(model = txp_q1_model,
+                             input = q1_txp_mod,
+                             id.var = "Name")
 ## Calculate scores for single model; returns TxpResult object
 res_q1 <- txpCalculateScores(model = txp_q1_model,
                              input = q1_txp_mod,
@@ -115,6 +158,28 @@ res_q1 <- txpCalculateScores(model = txp_q1_model,
 
 plot(res_q1)
 plot(res_q1[order(txpRanks(res_q1))[1:12]])
+
+plot(res_q24)
+plot(res_q24[order(txpRanks(res_q24))[1:12]])
+plot(res_q24[order(txpRanks(res_q24))]) 
+
+plot(res_q24, package = "gg")
+plot(res_q24[order(txpRanks(res_q24))], package = "gg", ncol = 10) +
+  theme(legend.position = "")
+
+plot(res_q24, txpRanks(res_q24))
+
+input <- q24_txp_mod
+model <- txp_q24_model
+
+txpExportGui(
+  fileName = "C:/Users/christine.calleja/RCode/myrepo/txp2024Model.csv",
+  input,
+  model,
+  id.var = "Name",
+  fills = NULL
+)
+
 
 plot(res_q1, package = "gg")
 plot(res_q1[order(txpRanks(res_q1))], package = "gg", ncol = 10) +

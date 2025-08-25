@@ -456,6 +456,21 @@ df_wide_clean <- as.data.frame(df_wide)
 
 #write.dbf(df_wide_clean, "2025q1_aqi_summary_wide.dbf")
 
+
+summary24_all_xy <- merge(summary24_all, sensor_mod, by = "Name")
+
+df24_wide <- summary24_all_xy %>%
+  pivot_wider(
+    id_cols = c(Name, latitude, longitude),
+    names_from = Pollutant,
+    values_from = c(mean, median, min, max, StD),
+    names_glue = "{Pollutant}_{.value}"
+  )
+
+df24_wide_clean <- as.data.frame(df24_wide)
+write.dbf(df24_wide_clean, "2024_aqi_summary_wide.dbf")
+
+#write.dbf(df_wide_clean, "2025q1_aqi_summary_wide.dbf")
 ###
 
 # Filter for PM2.5 only
@@ -538,7 +553,7 @@ ggplot(df24_xy, aes(x = Name, y = PM2.5)) +
     alpha = 0.2
   ) +
   geom_boxplot(outlier.color = "black") +
-  scale_fill_manual(values = setNames(aqi_levels$fill, aqi_levels$category), guide = "none") +
+  scale_fill_manual(values = setNames(aqi_levels_ALL$fill, aqi_levels_ALL$category), guide = "none") +
   labs(
     title = "PM2.5 AQI by Monitor",
     x = "Monitor",
@@ -641,16 +656,16 @@ library(gridExtra)
 
 
 
-aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
+aqi_cols24 <- c("NO2",  "SO2",  "PM1",  "PM2.5", "PM10", "O3",   "CO",  "NO")
 
 # quick checks
 cat("Columns present in df:\n")
-print(intersect(aqi_cols, names(df)))
+print(intersect(aqi_cols24, names(df24_xy)))
 cat("Columns missing from df (these will be skipped):\n")
-print(setdiff(aqi_cols, names(df)))
+print(setdiff(aqi_cols24, names(df24_xy)))
 
 # check non-NA counts
-counts <- sapply(intersect(aqi_cols, names(df)), function(col) sum(!is.na(df[[col]])))
+counts <- sapply(intersect(aqi_cols24, names(df24_xy)), function(col) sum(!is.na(df[[col]])))
 cat("Non-NA counts per pollutant:\n")
 print(counts)
 
@@ -658,32 +673,32 @@ plots <- list()
 saved_files <- character(0)
 
 # make sure Name column exists
-if (!"Name" %in% names(df)) stop("Column 'Name' not found in df — please check the monitor name column.")
+if (!"Name" %in% names(df24_xy)) stop("Column 'Name' not found in df — please check the monitor name column.")
 
-for (poll in aqi_cols) {
-  if (!(poll %in% names(df))) {
-    message("Skipping ", poll, ": column not found in df.")
+for (poll24 in aqi_cols24) {
+  if (!(poll24 %in% names(df24_xy))) {
+    message("Skipping ", poll24, ": column not found in df.")
     next
   }
   
-  n_non_na <- sum(!is.na(df[[poll]]))
+  n_non_na <- sum(!is.na(df24_xy[[poll24]]))
   if (n_non_na == 0) {
-    message("Skipping ", poll, ": all values are NA.")
+    message("Skipping ", poll24, ": all values are NA.")
     next
   }
   
   # Prepare df_poll
-  df_poll <- df %>%
-    select(Name, value = all_of(poll)) %>%
+  df_poll24 <- df24_xy %>%
+    select(Name, value = all_of(poll24)) %>%
     filter(!is.na(value))
   
-  if (nrow(df_poll) == 0) {
-    message("Skipping ", poll, ": no non-NA rows after select/filter.")
+  if (nrow(df_poll24) == 0) {
+    message("Skipping ", poll24, ": no non-NA rows after select/filter.")
     next
   }
   
   # compute min/max per monitor and drop Inf/-Inf
-  df_minmax <- df_poll %>%
+  df_minmax24 <- df_poll24 %>%
     group_by(Name) %>%
     summarise(
       min_val = min(value, na.rm = TRUE),
@@ -693,26 +708,26 @@ for (poll in aqi_cols) {
     filter(is.finite(min_val), is.finite(max_val))
   
   # Build plot
-  p <- ggplot(df_poll, aes(x = Name, y = value)) +
+  p <- ggplot(df_poll24, aes(x = Name, y = value)) +
     geom_rect(
-      data = aqi_levels,
+      data = aqi_levels_ALL,
       aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax, fill = category),
       inherit.aes = FALSE, alpha = 0.2
     ) +
     geom_boxplot(outlier.color = "black") +
-    scale_fill_manual(values = setNames(aqi_levels$fill, aqi_levels$category), guide = "none") +
-    labs(title = paste0(poll, " by Monitor"), x = "Monitor", y = "AQI") +
+    scale_fill_manual(values = setNames(aqi_levels_ALL$fill, aqi_levels_ALL$category), guide = "none") +
+    labs(title = paste0(poll24, " by Monitor"), x = "Monitor", y = "AQI") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
   # add min/max points/labels only if we have them
-  if (nrow(df_minmax) > 0) {
+  if (nrow(df_minmax24) > 0) {
     p <- p +
-      geom_point(data = df_minmax, aes(x = Name, y = min_val), color = "red", size = 2) +
-      geom_text(data = df_minmax, aes(x = Name, y = min_val, label = round(min_val, 1)),
+      geom_point(data = df_minmax24, aes(x = Name, y = min_val), color = "red", size = 2) +
+      geom_text(data = df_minmax24, aes(x = Name, y = min_val, label = round(min_val, 1)),
                 vjust = 1.5, size = 2, color = "red") +
-      geom_point(data = df_minmax, aes(x = Name, y = max_val), color = "blue", size = 2) +
-      geom_text(data = df_minmax, aes(x = Name, y = max_val, label = round(max_val, 1)),
+      geom_point(data = df_minmax24, aes(x = Name, y = max_val), color = "blue", size = 2) +
+      geom_text(data = df_minmax24, aes(x = Name, y = max_val, label = round(max_val, 1)),
                 vjust = -0.5, size = 2, color = "blue")
   } else {
     message("No finite min/max values for ", poll, " — plotting boxplot without min/max points.")
@@ -720,12 +735,12 @@ for (poll in aqi_cols) {
   
   # save file-safe name and save
   safe_name <- gsub("[^A-Za-z0-9_]", "_", poll)   # replace problem chars
-  fname <- paste0(safe_name, "_boxplot.png")
+  fname <- paste0(safe_name, "_24_boxplot.png")
   
   ggsave(filename = fname, plot = p, width = 8, height = 6, dpi = 300)
-  message("Saved plot for ", poll, " -> ", fname)
+  message("Saved plot for ", poll24, " -> ", fname)
   
-  plots[[poll]] <- p
+  plots[[poll24]] <- p
   saved_files <- c(saved_files, fname)
 }
 
@@ -742,14 +757,14 @@ print(saved_files)
 
 
 # convert df_xy to data.table
-setDT(df_xy)
+setDT(df24_xy)
 
 # list AQI column names to be summarized
-aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
+#aqi_cols <- c("PM2.5.AQI", "PM10.AQI", "SO2.AQI", "NO2.AQI", "O3.AQI")
 
 # loop through the columns, calculate summary stats per pollutant and combine into one table
-summary_all <- rbindlist(lapply(aqi_cols, function(col) {
-  df_xy[
+summary24_all <- rbindlist(lapply(aqi_cols24, function(col) {
+  df24_xy[
     ,.(
       mean=as.numeric(mean(get(col), na.rm = T)), 
       max=as.numeric(max(get(col), na.rm = T)), 
@@ -769,17 +784,17 @@ summary_all <- rbindlist(lapply(aqi_cols, function(col) {
 #  )
 
 # Create a list to store the plots
-plots <- list()
+plots24 <- list()
 
-for (poll in aqi_cols) {
-  df_poll <- summary_all_xy %>%
+for (poll24 in aqi_cols24) {
+  df_poll24 <- summary24_all_xy %>%
     filter(Pollutant == poll, !is.na(mean))
   
   # Set x range to cover all bars
   xmin <- 0.5
   xmax <- nrow(df_poll) + 0.5
   
-  p <- ggplot(df_poll, aes(x = Name, y = mean, fill = Name)) +
+  p <- ggplot(df_poll24, aes(x = Name, y = mean, fill = Name)) +
     # Background AQI categories
     geom_rect(
       data = aqi_levels,
@@ -852,7 +867,7 @@ ggplot(summary_all, aes(x = Name, y = mean, fill = Name)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1) +
           theme(legend.position = "none"))
 
-summary_all_xy <- merge(summary_all, sensor_mod, by = "Name")
+summary24_all_xy <- merge(summary24_all, sensor_mod, by = "Name")
 
 # Filter by singular pollutant
 pm25_map <- summary_all_xy %>%
@@ -890,7 +905,7 @@ ggplot(pm25_map) +
 #write.dbf(df_xy, "2025q1_aqi_temporal.dbf")
 
 
-df_wide <- summary_all_xy %>%
+df24_wide <- summary_all_xy %>%
   pivot_wider(
     id_cols = c(Name, latitude, longitude),
     names_from = Pollutant,
