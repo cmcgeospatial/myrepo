@@ -5,3 +5,4 @@ This is a line from RStudio
 Another line from RStudio
 GitHub first, then RStudio
 Line added from GitHub
+Line added
