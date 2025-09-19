@@ -12,57 +12,92 @@ library(scales)
 
 # set the working directory. 
 setwd("C:/Users/christine.calleja/Documents/CDHI_Analysis/Data/AQI_test/Data")
+
+#AQI for 2025 Q1
 q1aq25 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/AQI_Data/Q1.2025.AQIs.Detroit.csv")
-aq24 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/Concentration_Data/2024.Detroit.alldata.csv")
+
+#AQI for 2024 Q1-Q4
+aqiDaily2024 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/AQI_Data/Detroit.2024.AQIs.csv")
+
+#concentration data for 2024, q1 2025 and Hamtramck q1 2025
+#aq24 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/Concentration_Data/2024.Detroit.alldata.csv")
+#q1det25 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/Concentration_Data/Q1.2025.Detroit.alldata.csv")
+#q1ham25 <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/Hamtramck_Data/Q1.JeromeandMoran.updated.080525.csv")
+
 
 # load csv
+# 2025 AQI Q1
 df <- q1aq25
-df24 <- aq24
+#df24 <- aq24
+# 2024 AQI Q1-4
+aqi24 <- aqiDaily2024
 
 # view column names of df
 names(df)
-names(df24)
+names(aqi24)
+#(aqi24)
+#names(df24)
+#names(aqiDaily2024)
+#names(q1det25)
+#names(q1ham25)
 #View(df)
 
+
+# keep name, date, and all pollutant.AQI columns
 df_mod <- df[, c(1, 4, 8, 12, 17, 21, 25)]
-df24_mod <- df24[,c(1, 4, 6, 7, 8, 9, 10, 13, 14, 15)]
+aqi24_mod <- aqi24[, c(1, 4, 8, 12, 17, 21, 25)]
+#aqiDaily2024_mod <- aqiDaily2024[, c(1, 4, 8, 12, 17, 21, 25)] 
+#df24_mod <- df24[,c(1, 4, 6, 7, 8, 9, 10, 13, 14, 15)]
 
 #names(df_mod)
-names(df24_mod)
+#names(df24_mod)
+#names(aqiDaily2024_mod)
 
+# read in sensor data and filter to usable columns
 sensor <- read.csv("//ds.detroitmi.gov/dept-data/Sustainability/00_CDHI/JustAir_Data/DetMonitorPointsXY.csv")
-
 sensor_mod <- sensor[, c(1, 2, 3)]
 
-#colnames(df_mod)[2] <- "date"
+# change date field's name
+colnames(df_mod)[2] <- "date"
+colnames(aqi24_mod)[2] <- "date"
 
-#df_xy <- merge(df_mod, sensor_mod, by = "Name")
+# add sensors to dfs
+df_mod_xy <- merge(df_mod, sensor_mod, by = "Name")
+aqi24_mod_xy <- merge(aqi24_mod, sensor_mod, by = "Name")
 
-colnames(df24_mod)[2] <- "date"
+#colnames(df24_mod)[2] <- "date"
+#df24_xy <- merge(df24_mod, sensor_mod, by = "Name")
+#colnames(aqiDaily2024_mod)[2] <- "date"
+#aqiDaily24_xy <- merge(aqiDaily2024_mod, sensor_mod, by = "Name")
 
-df24_xy <- merge(df24_mod, sensor_mod, by = "Name")
+# Group 2024 concentrations by monitor
+#df24_xy <- df24_xy %>%
+#  group_by(Name)
+#df24_xy <- data.frame(df24_xy)
+#head(df24_xy)
+#Monitor <- df24_xy$Name
+#boxplot(PM2.5 ~ Monitor, df24_xy)
 
-# Group by monitor
-df24_xy <- df24_xy %>%
+# Group q1 aqi by monitor
+df_mod_xy <- df_mod_xy %>%
   group_by(Name)
 
-df24_xy <- data.frame(df24_xy)
-head(df24_xy)
+data25 <- data.frame(df_mod_xy)
+head(data25)
 
-Monitor <- df24_xy$Name
-boxplot(PM2.5 ~ Monitor, df24_xy)
+MonitorAqiDaily25 <- data25$Name
+PM2.5AQI <- data25$PM2.5.AQI
+boxplot(PM2.5AQI ~ MonitorAqiDaily25, data25)
 
-
-# Group by monitor
-df_xy <- df_xy %>%
+# Group 2024 aqi by monitor
+aqi24_mod_xy <- aqi24_mod_xy %>%
   group_by(Name)
 
-df <- data.frame(df_xy)
-head(df)
+data24 <- data.frame(aqi24_mod_xy)
+head(data24)
 
-Monitor <- df$Name
-PM2.5AQI <- df$PM2.5.AQI
-boxplot(PM2.5AQI ~ Monitor, df)
+MonitorAqiDaily24 <- data24$Name
+boxplot(PM2.5.AQI ~ MonitorAqiDaily24, data24)
 
 # AQI background levels
 #aqi_levels <- data.frame(
@@ -79,6 +114,12 @@ aqi_levels_ALL <- data.frame(
   fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023")
 )
 
+#aqi_levels_pm25 <- data.frame(
+#  ymin = c(0, 51, 101, 151, 201, 301),
+#  ymax = c(50, 100, 150, 200, 300, 500),
+#  category = c("Good", "Moderate", "Unhealthy for Sensitive", "Unhealthy", "Very Unhealthy", "Hazardous"),
+#  fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023")
+#)
 ### fOR THE REST OF DF24_XY START AT LINE 525
 
 # Without max min labeled
@@ -488,14 +529,14 @@ pm25_stats <- pm25_df %>%
   )
 
 # Plot time series per monitor per pollutant
-plot.airquality <- function(monitor_name, df24_xy) {
+plot.airquality <- function(monitor_name, data24) {
   # Ensure 'date' is Date class
-  df24_xy$date <- as.Date(df24_xy$date)
+  data24$date <- as.Date(data24$date)
   
   # Filter data for the selected monitor
-  df24_monitor <- df24_xy %>% filter(Name == monitor_name)
+  data24_monitor <- data24 %>% filter(Name == monitor_name)
   
-  if (nrow(df24_monitor) == 0) {
+  if (nrow(data24_monitor) == 0) {
     message("No data found for monitor: ", monitor_name)
     return(NULL)
   }
@@ -508,11 +549,11 @@ plot.airquality <- function(monitor_name, df24_xy) {
     fill = c("#00e400", "#ffff00", "#ff7e00", "#ff0000", "#8f3f97", "#7e0023")
   )
   
-  xmin <- min(df24_monitor$date, na.rm = TRUE)
-  xmax <- max(df24_monitor$date, na.rm = TRUE)
+  xmin <- min(data24_monitor$date, na.rm = TRUE)
+  xmax <- max(data24_monitor$date, na.rm = TRUE)
   
   # Create plot
-  p <- ggplot(df24_monitor, aes(x = date, y = PM2.5)) +
+  p <- ggplot(data24_monitor, aes(x = date, y = PM2.5)) +
     geom_rect(data = aqi_levels_ALL,
               aes(ymin = ymin, ymax = ymax, fill = category),
               xmin = xmin, xmax = xmax,
